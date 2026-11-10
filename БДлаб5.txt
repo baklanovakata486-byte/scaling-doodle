@@ -1,9 +1,5 @@
-============================================================
-ЛАБОРАТОРНАЯ РАБОТА №5 — БАЗА ДАННЫХ building_maintenance
-============================================================
 
-
---- создание базы данных (CREATE DATABASE)
+-- создание базы данных (CREATE DATABASE)
 
 /* получение списка БД на сервере */
 SHOW DATABASES;
@@ -21,7 +17,8 @@ USE building_maintenance;
 SHOW TABLES;
 
 
---- создание таблиц и связей (CREATE TABLE)
+-- создание таблиц и связей (CREATE TABLE)
+
 
 /* Создание справочников */
 CREATE TABLE departments (
@@ -150,7 +147,8 @@ CREATE TABLE work_executions (
 );
 
 
---- изменение структуры таблиц (ALTER TABLE)
+-- изменение структуры таблиц (ALTER TABLE)
+
 
 /* 1. Пример изменения типа поля (ALTER TABLE) */
 ALTER TABLE requesters MODIFY requester_premises VARCHAR(200);
@@ -160,9 +158,33 @@ ALTER TABLE requests ADD COLUMN additional_notes TEXT;
 
 /* 3. Реализация бизнес-правила "Стоимость работ не может быть < 0"
    с помощью ТРИГГЕРА */
+DELIMITER //
+CREATE TRIGGER trg_work_cost_non_negative
+BEFORE INSERT ON work_executions
+FOR EACH ROW
+BEGIN
+  IF NEW.work_cost < 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Стоимость работ не может быть отрицательной';
+  END IF;
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER trg_work_cost_non_negative_upd
+BEFORE UPDATE ON work_executions
+FOR EACH ROW
+BEGIN
+  IF NEW.work_cost < 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Стоимость работ не может быть отрицательной';
+  END IF;
+END//
+DELIMITER ;
 
 
---- вставка записей (INSERT INTO)
+-- вставка записей (INSERT INTO)
+
 
 /* Вставка справочников (явно указываем ID из Excel) */
 INSERT INTO departments (department_id, department_name) VALUES
@@ -254,10 +276,10 @@ INSERT INTO equipment_systems (equipment_id, system_id) VALUES
 /* Вставка заявок и выполнения работ */
 INSERT INTO requests (request_id, receipt_date, source_id, requester_id, category_id, priority_id, accident_type_id, building_id, problem_location, desired_due_date, executor_id, assigned_at, planned_due_date) VALUES
 (400001, '2025-02-10', 1, 100001, 1, 1, 1, 300001, 'ЖК Северный, подъезд 2, этаж 5', '2025-02-11', 200001, '2025-02-10 09:15:00', '2025-02-11'),
-(400002, '2025-02-11', 2, 100002, 2, 2, NULL, 300002, 'БЦ Гранит, офис 210', '2025- 02-15', 200003, '2025-02-11 10:00:00', '2025-02-14'),
+(400002, '2025-02-11', 2, 100002, 2, 2, NULL, 300002, 'БЦ Гранит, офис 210', '2025-02-15', 200003, '2025-02-11 10:00:00', '2025-02-14'),
 (400003, '2025-02-12', 3, 100003, 1, 3, 2, 300003, 'ЖК Южный парк, подъезд 1', '2025-02-12', 200002, '2025-02-12 08:30:00', '2025-02-12'),
-(400004, '2025-02-13', 4, 100004, 2, 2, NULL, 300004, 'ТЦ Меркурий, 3 этаж', '2025- 02-20', 200005, '2025-02-13 14:20:00', '2025-02-19'),
-(400005, '2025-02-14', 5, 100005, 1, 1, 3, 300005, 'Школа № 125, подвал', '2025- 02-14', 200004, '2025-02-14 07:05:00', '2025-02-14');
+(400004, '2025-02-13', 4, 100004, 2, 2, NULL, 300004, 'ТЦ Меркурий, 3 этаж', '2025-02-20', 200005, '2025-02-13 14:20:00', '2025-02-19'),
+(400005, '2025-02-14', 5, 100005, 1, 1, 3, 300005, 'Школа № 125, подвал', '2025-02-14', 200004, '2025-02-14 07:05:00', '2025-02-14');
 
 INSERT INTO work_executions (request_id, equipment_id, actual_completion_date, work_description, work_cost, status_id) VALUES
 (400001, 500006, '2025-02-11', 'Заменён участок трубопровода, устранена протечка', 12500.00, 1),
@@ -268,7 +290,8 @@ INSERT INTO work_executions (request_id, equipment_id, actual_completion_date, w
 (400001, 500001, '2025-02-11', 'Диагностика лифтового оборудования после протечки', 2000.00, 1);
 
 
---- обновление записей (UPDATE)
+-- обновление записей (UPDATE)
+
 
 /* Обновление статуса работы */
 UPDATE work_executions
@@ -280,15 +303,16 @@ UPDATE work_executions
 SET work_cost = 11500.00
 WHERE request_id = 400001 AND equipment_id = 500006;
 
+-- удаление записей (DELETE FROM)
 
---- удаление записей (DELETE FROM)
 
 /* Удаление ошибочно внесенной записи */
 DELETE FROM work_executions
 WHERE request_id = 400004 AND equipment_id = 500004;
 
 
---- создание пользователей (CREATE USER) и наделение их правами (GRANT)
+-- создание пользователей (CREATE USER) и наделение их правами (GRANT)
+
 
 /* Создание диспетчера (чтение всего, изменение только заявок) */
 CREATE USER 'dispatcher'@'localhost' IDENTIFIED BY 'DispatcherPass123!';
@@ -302,10 +326,9 @@ GRANT ALL PRIVILEGES ON building_maintenance.* TO 'sys_admin'@'localhost';
 /* Применение изменений */
 FLUSH PRIVILEGES;
 
+-- выгрузка метаданных всех получившихся таблиц (DESCRIBE)
 
---- выгрузка метаданных всех получившихся таблиц (DESCRIBE)
 
-/* Метаданные таблиц */
 DESCRIBE departments;
 SHOW COLUMNS FROM departments;
 DESCRIBE building_types;
@@ -339,8 +362,10 @@ SHOW COLUMNS FROM requests;
 DESCRIBE work_executions;
 SHOW COLUMNS FROM work_executions;
 
+-- ЧАСТЬ 2. ЗАПРОСЫ
 
---- неявное соединение таблиц с фильтром данных (WHERE) и сортировкой (ORDER BY)
+-- неявное соединение таблиц с фильтром (WHERE) и сортировкой (ORDER BY)
+
 
 /* Запрос 1.1: Список аварийных заявок с контактами заявителей */
 SELECT
@@ -388,7 +413,8 @@ WHERE r.source_id = src.source_id
 ORDER BY d.department_name;
 
 
---- явное соединение таблиц (JOIN)
+-- явное соединение таблиц (JOIN)
+
 
 /* Запрос 2.1: Отчет по выполненным работам (INNER JOIN) */
 SELECT
@@ -419,8 +445,8 @@ LEFT JOIN work_executions we ON r.request_id = we.request_id
 JOIN priorities p ON r.priority_id = p.priority_id
 ORDER BY r.planned_due_date;
 
+-- агрегирующие операции (SUM, AVG, COUNT, MAX, MIN)
 
---- агрегирующие операции (SUM, AVG, COUNT, MAX, MIN)
 
 /* Запрос 3.1: Общая финансовая статистика по ремонтам */
 SELECT
@@ -450,7 +476,8 @@ JOIN building_types bt ON b.building_type_id = bt.building_type_id
 GROUP BY bt.building_type_name;
 
 
---- группировка GROUP BY и фильтрация HAVING
+-- группировка GROUP BY и фильтрация HAVING
+
 
 /* Запрос 4.1: Здания с высокими затратами на ремонт */
 SELECT
@@ -477,7 +504,8 @@ HAVING COUNT(r.request_id) > 0
 ORDER BY Количество_случаев DESC;
 
 
---- вложенные подзапросы (запрос в запросе), в т.ч. IN, ALL
+-- вложенные подзапросы (IN, ALL)
+
 
 /* 1.1. Подзапрос с IN: заявки исполнителей из «Лифтовой службы» */
 SELECT
@@ -513,7 +541,8 @@ WHERE we.work_cost > ALL (
 ORDER BY we.work_cost DESC;
 
 
---- использование «функций управления потоком» (IF, CASE)
+-- функции управления потоком (IF, CASE)
+
 
 /* 2.1. IF: выполнена ли работа в срок */
 SELECT
@@ -560,7 +589,9 @@ FROM requests r
 ORDER BY r.request_id;
 
 
---- создание представления (CREATE VIEW) и временное представление (WITH)
+
+-- представление (CREATE VIEW) и временное представление (WITH)
+
 
 /* 3.1. CREATE VIEW: отчёт по выполненным работам */
 CREATE OR REPLACE VIEW v_work_report AS
@@ -616,15 +647,16 @@ FROM executor_work
 ORDER BY total_cost DESC;
 
 
---- анализ и оптимизация запросов (EXPLAIN, CREATE INDEX)
+-- анализ и оптимизация запросов (EXPLAIN, CREATE INDEX)
+
 
 EXPLAIN
 SELECT
     r.request_id,
-    req.request_full_name,
+    req.requester_full_name,
     b.building_name
 FROM requests r, requesters req, buildings b, request_categories c
-WHERE r.request_id = req.request_id
+WHERE r.requester_id = req.requester_id
   AND r.building_id = b.building_id
   AND r.category_id = c.category_id
   AND c.category_name = 'Аварийная'
@@ -646,7 +678,8 @@ GROUP BY b.building_name
 HAVING SUM(we.work_cost) > 5000;
 
 
---- механизм транзакций (START TRANSACTION)
+-- механизм транзакций (START TRANSACTION)
+
 
 START TRANSACTION;
 
@@ -669,7 +702,8 @@ WHERE request_id = 400001 AND equipment_id = 500006;
 COMMIT;
 
 
---- операторы PREPARE, EXECUTE, DEALLOCATE
+-- операторы PREPARE, EXECUTE, DEALLOCATE
+
 
 PREPARE stmt_requests_by_executor FROM
 'SELECT
